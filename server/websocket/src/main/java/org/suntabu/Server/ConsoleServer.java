@@ -48,7 +48,24 @@ public class ConsoleServer extends NanoHTTPD {
         int port = 8081;
 
         final ConsoleServer consoleServer = new ConsoleServer(port);
+        final Console console = new Console();
+        final SimpleWebSocketServer socketServer = new SimpleWebSocketServer(8083, new WebsocketListener() {
+            @Override
+            public void onOpen() {
 
+            }
+
+            @Override
+            public void onClose() {
+            }
+
+            @Override
+            public void onMessage(WebSocketFrame message, SimpleWebSocketServer simpleWebSocket) {
+                String msg = message.getTextPayload();
+                String result = console.console_run(msg);
+                simpleWebSocket.send(result);
+            }
+        });
 
 
         new Thread(new Runnable() {
@@ -56,6 +73,14 @@ public class ConsoleServer extends NanoHTTPD {
             public void run() {
                 try {
                     consoleServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+
+                    if (!socketServer.isAlive()) {
+                        try {
+                            socketServer.start();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -72,7 +97,7 @@ public class ConsoleServer extends NanoHTTPD {
         initPattern();
         this.port = port;
 
-        console = new Console();
+
     }
 
     private void initPattern() {
@@ -118,34 +143,6 @@ public class ConsoleServer extends NanoHTTPD {
             uri += "index.html";
         }
 
-        if (uri.endsWith("index.html")) {
-            if (socketServer == null)
-                socketServer = new SimpleWebSocketServer(8083, new WebsocketListener() {
-                    @Override
-                    public void onOpen() {
-
-                    }
-
-                    @Override
-                    public void onClose() {
-                    }
-
-                    @Override
-                    public void onMessage(WebSocketFrame message, SimpleWebSocketServer simpleWebSocket) {
-                        String msg = message.getTextPayload();
-                        String result = console.console_run(msg);
-                        simpleWebSocket.send(result);
-                    }
-                });
-
-            if (!socketServer.isAlive()) {
-                try {
-                    socketServer.start();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
 
         Matcher matcher = pattern.matcher(uri);
         if (matcher.find()) {
